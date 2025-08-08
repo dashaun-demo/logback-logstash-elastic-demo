@@ -1,0 +1,50 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.1.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - cluster.name=log-cluster
+      - bootstrap.memory_lock=true
+      - indices.memory.index_buffer_size=30%
+      - thread_pool.write.queue_size=2000
+      - thread_pool.write.size=8
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - .docker/elastic/data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:9.1.0
+    container_name: logstash
+    environment:
+      - "LS_JAVA_OPTS=-Xms1g -Xmx1g"
+      - pipeline.workers=8
+      - pipeline.batch.size=2000
+      - pipeline.batch.delay=5
+      - queue.type=memory
+      - queue.max_events=20000
+    volumes:
+      - .docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - .docker/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    ports:
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy

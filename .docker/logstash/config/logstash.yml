@@ -1,0 +1,16 @@
+# logstash/config/logstash.yml
+http.host: "0.0.0.0"
+xpack.monitoring.enabled: false
+
+# Performance tuning
+pipeline.workers: 8
+pipeline.batch.size: 2000
+pipeline.batch.delay: 5
+queue.type: memory
+queue.max_events: 20000
+queue.checkpoint.writes: 1024
+
+# Disable unnecessary features
+config.reload.automatic: false
+config.reload.interval: 3s
+log.level: warn
