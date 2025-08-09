@@ -3,6 +3,7 @@
 # setup.sh - Setup script for the log performance test
 
 echo "Starting Elasticsearch and Logstash..."
+rm -rf .docker/elastic
 docker compose up -d
 
 # Wait for Elasticsearch to be ready

@@ -10,26 +10,95 @@
         </encoder>
     </appender>
 
-    <!-- Async wrapper for maximum performance -->
+    <!-- TCP Appender with Logstash JSON encoder - RELIABLE CONFIGURATION -->
+    <appender name="LOGSTASH_TCP" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>localhost:5000</destination>
+
+        <!-- Connection settings for reliability -->
+        <reconnectionDelay>10 seconds</reconnectionDelay>
+        <connectionTimeout>10 seconds</connectionTimeout>
+        <writeTimeout>5 minutes</writeTimeout>
+
+        <!-- Keep connection alive -->
+        <keepAliveDuration>5 minutes</keepAliveDuration>
+        <keepAliveMessage>PING</keepAliveMessage>
+
+        <!-- Encoder configuration -->
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>counter</includeMdcKeyName>
+            <includeMdcKeyName>thread_id</includeMdcKeyName>
+            <includeMdcKeyName>timestamp</includeMdcKeyName>
+            <includeContext>false</includeContext>
+            <includeCallerData>false</includeCallerData>
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS</timestampPattern>
+        </encoder>
+
+        <!-- Large ring buffer for reliability -->
+        <ringBufferSize>16777216</ringBufferSize>
+        <writeBufferSize>4194304</writeBufferSize>
+    </appender>
+
+    <!-- Async wrapper with blocking queue for ZERO log loss -->
     <appender name="ASYNC_LOGSTASH" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="LOGSTASH_TCP"/>
-        <queueSize>50000</queueSize>
+
+        <!-- Large queue to handle bursts -->
+        <queueSize>100000</queueSize>
+
+        <!-- NEVER discard messages -->
         <discardingThreshold>0</discardingThreshold>
+
+        <!-- Block when queue is full (ensures no drops) -->
+        <neverBlock>false</neverBlock>
+
+        <!-- Include all data -->
         <includeCallerData>false</includeCallerData>
-        <neverBlock>true</neverBlock>
-        <maxFlushTime>0</maxFlushTime>
+
+        <!-- Wait for queue to flush on shutdown -->
+        <maxFlushTime>60000</maxFlushTime>
+    </appender>
+
+    <!-- Fallback file appender in case TCP fails -->
+    <appender name="FALLBACK_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/fallback.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/fallback.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>counter</includeMdcKeyName>
+            <includeMdcKeyName>thread_id</includeMdcKeyName>
+            <includeMdcKeyName>timestamp</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <!-- Composite appender for redundancy -->
+    <appender name="REDUNDANT_LOGGING" class="ch.qos.logback.classic.sift.SiftingAppender">
+        <discriminator>
+            <key>logDest</key>
+            <defaultValue>all</defaultValue>
+        </discriminator>
+        <sift>
+            <appender name="COMBINED-${logDest}" class="ch.qos.logback.core.AsyncAppender">
+                <appender-ref ref="ASYNC_LOGSTASH"/>
+                <appender-ref ref="FALLBACK_FILE"/>
+                <queueSize>50000</queueSize>
+                <discardingThreshold>0</discardingThreshold>
+                <neverBlock>false</neverBlock>
+            </appender>
+        </sift>
     </appender>
 
     <!-- Root logger configuration -->
     <root level="INFO">
-        <!-- Use ASYNC_LOGSTASH for TCP or LOGSTASH_UDP for UDP -->
+        <!-- Use ASYNC_LOGSTASH for production -->
         <appender-ref ref="ASYNC_LOGSTASH"/>
+        <!-- Uncomment for redundant logging to both TCP and file -->
+        <!-- <appender-ref ref="FALLBACK_FILE"/> -->
         <!-- Uncomment for local console output -->
-         <appender-ref ref="CONSOLE"/>
+        <!-- <appender-ref ref="CONSOLE"/> -->
     </root>
 
-    <!-- Performance test logger with maximum throughput -->
-<!--    <logger name="dev.dashaun.logstashdemo" level="INFO" additivity="false">-->
-<!--        <appender-ref ref="ASYNC_LOGSTASH"/>-->
-<!--    </logger>-->
+    <!-- Monitor for logback issues -->
+    <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
 </configuration>

@@ -5,11 +5,11 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - "ES_JAVA_OPTS=-Xms8g -Xmx8g"
       - cluster.name=log-cluster
       - bootstrap.memory_lock=true
       - indices.memory.index_buffer_size=30%
-      - thread_pool.write.queue_size=2000
+      - thread_pool.write.queue_size=5000
       - thread_pool.write.size=8
     ulimits:
       memlock:
@@ -32,19 +32,22 @@ services:
     image: docker.elastic.co/logstash/logstash:9.1.0
     container_name: logstash
     environment:
-      - "LS_JAVA_OPTS=-Xms1g -Xmx1g"
-      - pipeline.workers=8
-      - pipeline.batch.size=2000
-      - pipeline.batch.delay=5
-      - queue.type=memory
-      - queue.max_events=20000
+      - "LS_JAVA_OPTS=-Xms8g -Xmx8g"  # Increased for persisted queue
+      - LOG_LEVEL=info
+      - PIPELINE_WORKERS=8
+      - PIPELINE_BATCH_SIZE=1000
+      - PIPELINE_BATCH_DELAY=50
     volumes:
       - .docker/logstash/pipeline:/usr/share/logstash/pipeline:ro
-      - .docker/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - .docker/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+#      - .docker/logstash/data:/usr/share/logstash/data
+      - .docker/logstash/logstash-logs:/usr/share/logstash/logs
+#      - .docker/logstash/logstash-metrics:/usr/share/logstash/metrics
     ports:
-      - "5000:5000/tcp"
-      - "5000:5000/udp"
+      - "5000:5000/tcp"  # TCP only, no UDP
       - "9600:9600"
     depends_on:
       elasticsearch:
         condition: service_healthy
+    # Ensure proper shutdown to prevent log loss
+    stop_grace_period: 120s

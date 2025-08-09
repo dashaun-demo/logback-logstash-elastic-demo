@@ -1,16 +1,22 @@
-# logstash/config/logstash.yml
-http.host: "0.0.0.0"
-xpack.monitoring.enabled: false
-
-# Performance tuning
-pipeline.workers: 8
-pipeline.batch.size: 2000
-pipeline.batch.delay: 5
-queue.type: memory
-queue.max_events: 20000
-queue.checkpoint.writes: 1024
-
-# Disable unnecessary features
 config.reload.automatic: false
 config.reload.interval: 3s
-log.level: warn
+dead_letter_queue.enable: true
+dead_letter_queue.flush_interval: 5000
+dead_letter_queue.max_bytes: 1024mb
+log.format: plain
+log.level: ${LOG_LEVEL}
+path.dead_letter_queue: /usr/share/logstash/data/dead_letter_queue
+path.queue: /usr/share/logstash/data/queue
+pipeline.batch.delay: ${PIPELINE_BATCH_DELAY}
+pipeline.batch.size: ${PIPELINE_BATCH_SIZE}
+pipeline.unsafe_shutdown: false
+pipeline.workers: ${PIPELINE_WORKERS}
+queue.checkpoint.acks: 500
+queue.checkpoint.interval: 1000
+queue.checkpoint.retry: true
+queue.checkpoint.writes: 500
+queue.max_bytes: 4gb
+queue.type: persisted
+xpack.monitoring.elasticsearch.hosts:
+- http://elasticsearch:9200
+xpack.monitoring.enabled: true

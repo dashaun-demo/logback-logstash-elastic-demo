@@ -9,7 +9,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CountDownLatch;
@@ -45,18 +44,6 @@ public class Application {
 		};
 	}
 
-	@Bean(name = "logExecutor")
-	public Executor taskExecutor() {
-		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-		executor.setCorePoolSize(16);
-		executor.setMaxPoolSize(32);
-		executor.setQueueCapacity(100000);
-		executor.setThreadNamePrefix("LogGen-");
-		executor.setWaitForTasksToCompleteOnShutdown(true);
-		executor.setAwaitTerminationSeconds(60);
-		executor.initialize();
-		return executor;
-	}
 
 }
 
@@ -75,8 +62,8 @@ class LogGenerator {
 	}
 
 	public void runTest() throws InterruptedException {
-		int numThreads = 16;
-		int logsPerThread = Integer.MAX_VALUE; // Continuous logging
+		int numThreads = 1;
+		int logsPerThread = Integer.MAX_VALUE / 8; // Continuous logging
 		CountDownLatch latch = new CountDownLatch(numThreads);
 
 		// Start monitoring thread
